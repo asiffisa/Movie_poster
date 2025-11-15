@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Poster Finder</title>
+<style>
+  :root{font-family:Inter, system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+  body{margin:12px;background:#fff;color:#111}
+  .chips{display:flex;gap:8px;margin-bottom:12px}
+  .chip{padding:8px 12px;border-radius:999px;border:1px solid #ddd;cursor:pointer;font-size:13px}
+  .chip.active{background:#111;color:#fff;border-color:#111}
+  .actions{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+  button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#f8f8f8;cursor:pointer}
+  #searchView{display:none}
+  .results{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;overflow:auto;max-height:340px}
+  .thumb{cursor:pointer;border-radius:6px;overflow:hidden;border:1px solid #eee;padding:4px;background:#fff}
+  .thumb img{width:100%;display:block;height:160px;object-fit:cover;border-radius:4px}
+  .empty{padding:24px;text-align:center;color:#666;border:1px dashed #eee;border-radius:8px}
+  .snack{position:fixed;left:12px;right:12px;bottom:12px;background:#111;color:#fff;padding:8px;border-radius:8px;text-align:center;display:none}
+  input[type="text"]{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%}
+  .caption{font-size:12px;margin-top:6px;color:#333}
+</style>
+</head>
+<body>
+  <div class="chips">
+    <div id="chip-movie" class="chip active" data-type="movie">Movie</div>
+    <div id="chip-tv" class="chip" data-type="tv">TV Shows</div>
+  </div>
+
+  <div class="actions">
+    <button id="btn-search">Search</button>
+    <button id="btn-random">Randomly pick</button>
+    <div style="flex:1"></div>
+  </div>
+
+  <div id="searchView">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="searchInput" type="text" placeholder="Type title and press Enter" />
+      <button id="searchGo">Go</button>
+      <button id="backBtn">Back</button>
+    </div>
+
+    <div id="resultsContainer" style="margin-top:12px;">
+      <div id="emptyState" class="empty">
+        Type a title above to search the selected category.
+      </div>
+      <div id="results" class="results" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="footer small" style="font-size:11px;color:#666;margin-top:10px;">
+    Uses the TMDB API.
+  </div>
+
+  <div id="snack" class="snack"></div>
+
+<script>
+  // UI state
+  let mediaType = 'movie';
+  const chipMovie = document.getElementById('chip-movie');
+  const chipTv = document.getElementById('chip-tv');
+  const btnSearch = document.getElementById('btn-search');
+  const btnRandom = document.getElementById('btn-random');
+  const searchView = document.getElementById('searchView');
+  const backBtn = document.getElementById('backBtn');
+  const searchInput = document.getElementById('searchInput');
+  const resultsEl = document.getElementById('results');
+  const emptyState = document.getElementById('emptyState');
+  const snack = document.getElementById('snack');
+  const searchGo = document.getElementById('searchGo');
+
+  function setChip(type){
+    mediaType = type;
+    chipMovie.classList.toggle('active', type === 'movie');
+    chipTv.classList.toggle('active', type === 'tv');
+    searchInput.placeholder = type === 'movie' ? 'Search movies, e.g. Inception' : 'Search TV shows, e.g. Breaking Bad';
+  }
+  chipMovie.onclick = () => setChip('movie');
+  chipTv.onclick = () => setChip('tv');
+
+  btnSearch.onclick = () => {
+    searchView.style.display = 'block';
+    resultsEl.style.display = 'none';
+    emptyState.style.display = 'block';
+    searchInput.value = '';
+    searchInput.focus();
+    parent.postMessage({ pluginMessage: { type: 'opened-search', mediaType } }, '*');
+  };
+  backBtn.onclick = () => { searchView.style.display = 'none'; };
+
+  function showSnack(text, time=3000){
+    snack.innerText = text; snack.style.display = 'block';
+    clearTimeout(snack._t); snack._t = setTimeout(()=> snack.style.display = 'none', time);
+  }
+
+  function doSearch(){
+    const q = searchInput.value && searchInput.value.trim();
+    if(!q){ showSnack('Type something to search'); return; }
+    parent.postMessage({ pluginMessage: { type: 'search', mediaType, query: q } }, '*');
+    emptyState.innerText = 'Searching...'; emptyState.style.display = 'block'; resultsEl.style.display = 'none';
+  }
+  searchGo.onclick = doSearch;
+  searchInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') doSearch(); });
+
+  btnRandom.onclick = () => {
+    parent.postMessage({ pluginMessage: { type: 'random-pick', mediaType } }, '*');
+  };
+
+  window.onmessage = (event) => {
+    const msg = event.data.pluginMessage;
+    if(!msg) return;
+    if(msg.type === 'search-results') renderResults(msg.results || []);
+    if(msg.type === 'snackbar') showSnack(msg.message);
+    if(msg.type === 'inserted') showSnack(msg.message || 'Inserted poster');
+    if(msg.type === 'no-selection') showSnack(msg.message || 'Click the frame to continue');
+    if(msg.type === 'open-search-view') btnSearch.click();
+    if(msg.type === 'tmdb-debug') {
+      // debug info from host (only used when host sends it)
+      showSnack(`TMDB check: ${msg.status}`, 2500);
+      console.log('tmdb-debug:', msg);
+    }
+  };
+
+  function renderResults(results){
+    resultsEl.innerHTML = '';
+    if(!results || results.length === 0){
+      emptyState.innerText = 'No results. Try a different keyword.'; emptyState.style.display = 'block'; resultsEl.style.display = 'none'; return;
+    }
+    emptyState.style.display = 'none'; resultsEl.style.display = 'grid';
+    results.forEach(item => {
+      const div = document.createElement('div'); div.className = 'thumb';
+      const img = document.createElement('img'); img.src = item.poster_full || '';
+      img.alt = item.title || item.name || 'poster';
+      const caption = document.createElement('div'); caption.className='caption';
+      caption.innerText = (item.title || item.name) + (item.year ? ' • ' + item.year : '');
+      div.appendChild(img); div.appendChild(caption);
+      div.onclick = () => {
+        parent.postMessage({ pluginMessage: { type: 'insert-poster', mediaType, tmdbId: item.id, posterPath: item.poster_path, title: item.title || item.name } }, '*');
+      };
+      resultsEl.appendChild(div);
+    });
+  }
+
+  // notify host UI ready
+  parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
+</script>
+</body>
+</html>
