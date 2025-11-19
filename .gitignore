@@ -1,8 +1,14 @@
-# Node
-*.log
-*.log.*
-node_modules
+# macOS system files
+.DS_Store
 
-out/
+# Build folders (in case you add them later)
+node_modules/
 dist/
-code.js
+out/
+
+# Local secret files
+code.local.js
+.env
+
+# Archives
+*.zip

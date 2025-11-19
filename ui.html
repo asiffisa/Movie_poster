@@ -1,149 +1,799 @@
 <!doctype html>
 <html>
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Poster Finder</title>
-<style>
-  :root{font-family:Inter, system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
-  body{margin:12px;background:#fff;color:#111}
-  .chips{display:flex;gap:8px;margin-bottom:12px}
-  .chip{padding:8px 12px;border-radius:999px;border:1px solid #ddd;cursor:pointer;font-size:13px}
-  .chip.active{background:#111;color:#fff;border-color:#111}
-  .actions{display:flex;gap:8px;margin-bottom:12px;align-items:center}
-  button{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#f8f8f8;cursor:pointer}
-  #searchView{display:none}
-  .results{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;overflow:auto;max-height:340px}
-  .thumb{cursor:pointer;border-radius:6px;overflow:hidden;border:1px solid #eee;padding:4px;background:#fff}
-  .thumb img{width:100%;display:block;height:160px;object-fit:cover;border-radius:4px}
-  .empty{padding:24px;text-align:center;color:#666;border:1px dashed #eee;border-radius:8px}
-  .snack{position:fixed;left:12px;right:12px;bottom:12px;background:#111;color:#fff;padding:8px;border-radius:8px;text-align:center;display:none}
-  input[type="text"]{padding:10px;border-radius:8px;border:1px solid #ddd;width:100%}
-  .caption{font-size:12px;margin-top:6px;color:#333}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Movie Poster Plugin</title>
+  <style>
+    :root {
+      --font-stack: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      font-family: var(--font-stack);
+
+      --space-1: 12px;
+      /* base */
+      --space-2: 16px;
+      --space-3: 28px;
+      --header-height: 48px;
+
+      --bg: #F8F4FD;
+      --divider: #E1DAEA;
+      --text: #111111;
+
+      --chip-active-stroke: #5719A3;
+      --chip-active-fill: #DACAF3;
+      --chip-inactive-stroke: #C0B3D0;
+      --chip-inactive-fill: #F8F4FD;
+
+      --poster-radius: 12px;
+      --card-radius: 28px;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-stack);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      padding: 0;
+    }
+
+    .app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 140;
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-2);
+      background: var(--bg);
+      border-bottom: 1px solid var(--divider);
+    }
+
+    .toolbar .left {
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .toolbar .title {
+      font-size: 20px;
+      font-weight: 700
+    }
+
+    .toolbar button {
+      border: 0;
+      background: transparent;
+      padding: 6px;
+      cursor: pointer
+    }
+
+    /* chips bar (sticky under header) */
+    .chips-bar {
+      position: sticky;
+      top: 60px;
+      z-index: 130;
+      background: var(--bg);
+      padding: 4px 4px 8px 16px;
+      border-bottom: 1px solid transparent
+    }
+
+    .chips {
+      display: flex;
+      gap: 12px
+    }
+
+    .chip {
+      padding: 8px 14px;
+      border-radius: 60px;
+      border: 1.6px solid var(--chip-inactive-stroke);
+      background: var(--chip-inactive-fill);
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .chip.active {
+      border-color: var(--chip-active-stroke);
+      background: var(--chip-active-fill);
+    }
+
+    /* content canvas */
+    .canvas {
+      flex: 1;
+      overflow: auto;
+      padding: 24px 16px 24px 16px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 500;
+      margin: 8px 0 12px 0
+    }
+
+    /* action cards */
+    .actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 8px
+    }
+
+    .action-card {
+      background: #FFFFFF;
+      border-radius: var(--card-radius);
+      padding: 12px;
+      padding-left: 16px;
+      border: 1.6px solid #BB91EE;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      cursor: pointer
+    }
+
+    .action-card .icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 40px;
+      background: transparent;
+      font-size: 32px
+    }
+
+    .action-card .label {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 20px;
+      color: var(--text)
+    }
+
+    .divider {
+      height: 1.2px;
+      background: var(--divider);
+      margin: 28px 0
+    }
+
+    /* trending grid */
+    .trendingHeader {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 16px
+    }
+
+    .trendingGrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px 16px
+    }
+
+    /* override spacing specifically for the search results grid */
+    #searchResultsGrid.trendingGrid {
+      gap: 16px 16px
+    }
+
+    .thumb {
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .thumb .poster {
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      border-radius: var(--poster-radius);
+      overflow: hidden;
+      background: #E5DAF4;
+      position: relative
+    }
+
+    .thumb .poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: var(--poster-radius);
+      will-change: transform;
+      backface-visibility: hidden
+    }
+
+    .thumb .meta {
+      font-size: 12px;
+      color: #3a3340
+    }
+
+    /* loading placeholders */
+    .placeholder-card {
+      width: 100%;
+      aspect-ratio: 2 / 3;
+      background: #ECE4F6;
+      border-radius: 12px;
+      animation: pulse 1.5s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image: url('data:image/svg+xml;utf8,<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.0004 12L22.6671 4ZM9.33374 12L12.0004 4ZM1.33374 12H30.6671ZM4.53374 4H27.4671C27.8873 4 28.3034 4.08277 28.6917 4.24359C29.0799 4.4044 29.4327 4.64011 29.7298 4.93726C30.027 5.23441 30.2627 5.58717 30.4235 5.97541C30.5843 6.36365 30.6671 6.77977 30.6671 7.2V24.8C30.6671 25.6487 30.3299 26.4626 29.7298 27.0627C29.1297 27.6629 28.3158 28 27.4671 28H4.53374C3.68505 28 2.87111 27.6629 2.271 27.0627C1.67088 26.4626 1.33374 25.6487 1.33374 24.8V7.2C1.33374 6.77977 1.41651 6.36365 1.57733 5.97541C1.73814 5.58717 1.97385 5.23441 2.271 4.93726C2.87111 4.33714 3.68505 4 4.53374 4Z" fill="%23EEE7F8"/><path d="M20.0004 12L22.6671 4M9.33374 12L12.0004 4M1.33374 12H30.6671M4.53374 4H27.4671C27.8873 4 28.3034 4.08277 28.6917 4.24359C29.0799 4.4044 29.4327 4.64011 29.7298 4.93726C30.027 5.23441 30.2627 5.58717 30.4235 5.97541C30.5843 6.36365 30.6671 6.77977 30.6671 7.2V24.8C30.6671 25.6487 30.3299 26.4626 29.7298 27.0627C29.1297 27.6629 28.3158 28 27.4671 28H4.53374C3.68505 28 2.87111 27.6629 2.271 27.0627C1.67088 26.4626 1.33374 25.6487 1.33374 24.8V7.2C1.33374 6.77977 1.41651 6.36365 1.57733 5.97541C1.73814 5.58717 1.97385 5.23441 2.271 4.93726C2.87111 4.33714 3.68505 4 4.53374 4Z" fill="%23EEE7F8" stroke="%23BEA8DA" stroke-width="2.28571" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 40px 40px;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.6;
+      }
+    }
+
+    /* search view top */
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px
+    }
+
+    .input-wrap {
+      flex: 1;
+      background: #fff;
+      border: 2px solid rgba(187, 145, 238);
+      padding: 16px 16px;
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      gap: 16px
+    }
+
+    .input-wrap input {
+      border: 0;
+      outline: 0;
+      font-size: 16px;
+      width: 100%;
+      background: transparent
+    }
+
+    .icon-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 60px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(87, 25, 163, 0.12);
+      cursor: pointer
+    }
+
+    .icon-circle[disabled] {
+      cursor: default;
+      opacity: 0.9;
+      border-color: rgba(87, 25, 163, 0.06)
+    }
+
+    .icon-circle svg {
+      width: 20px;
+      height: 20px;
+      display: block
+    }
+
+    /* empty state large */
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 12px;
+      color: #777
+    }
+
+    /* empty state helper text (size adjustable) */
+    .empty-state .empty-note {
+      color: #BDAAD6;
+      margin-top: 4px;
+      font-size: 18px;
+      /* <-- change this value to control size */
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    /* small helpers */
+    .snack {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      background: #111;
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 10px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 1200;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+      transition: opacity .22s ease, transform .18s ease;
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    .snack[style*="display:flex"] {
+      /* when visible */
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .snack-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .snack-text {
+      flex: 1;
+      text-align: left;
+      font-size: 15px
+    }
+
+    /* focus */
+    button:focus,
+    .chip:focus,
+    .action-card:focus {
+      outline: 3px solid rgba(87, 25, 163, 0.14);
+      outline-offset: 2px
+    }
+
+    /* responsive small widths: collapse to 2 cols */
+    @media (max-width:420px) {
+      .trendingGrid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .actions-row {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <div class="chips">
-    <div id="chip-movie" class="chip active" data-type="movie">Movie</div>
-    <div id="chip-tv" class="chip" data-type="tv">TV Shows</div>
-  </div>
+  <div class="app">
+    <div class="toolbar">
+      <div class="left">
+        <button id="headerBack" aria-label="Back"
+          style="display:none;border:0;background:transparent;padding:6px;cursor:pointer;margin-right:6px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M11.4531 6.00024C7.98643 9.00024 7.98643 9.00024 4.78646 12.0002C7.98643 15.0002 7.98643 15.0002 11.4531 18.0002"
+              stroke="#050505" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M6.10831 11.9756L19.1992 11.9756" stroke="#050505" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </button>
 
-  <div class="actions">
-    <button id="btn-search">Search</button>
-    <button id="btn-random">Randomly pick</button>
-    <div style="flex:1"></div>
-  </div>
-
-  <div id="searchView">
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input id="searchInput" type="text" placeholder="Type title and press Enter" />
-      <button id="searchGo">Go</button>
-      <button id="backBtn">Back</button>
-    </div>
-
-    <div id="resultsContainer" style="margin-top:12px;">
-      <div id="emptyState" class="empty">
-        Type a title above to search the selected category.
+        <div id="headerIcon"
+          style="width:32px;height:32px;border-radius:999px;background:rgba(87,25,163,0.12);display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 3v18l15-9L5 3z" fill="#5719A3" />
+          </svg>
+        </div>
+        <div class="title">Add posters</div>
       </div>
-      <div id="results" class="results" style="display:none"></div>
+
+      <div></div>
+    </div>
+
+    <!-- chips sticky -->
+    <div class="chips-bar">
+      <div class="chips">
+        <div id="chip-movie" class="chip active" data-type="movie">🎬 Movies</div>
+        <div id="chip-tv" class="chip" data-type="tv">🍿 Tv shows</div>
+      </div>
+    </div>
+
+    <!-- main canvas area -->
+    <div class="canvas" id="canvas">
+
+      <!-- HOME content (default shown) -->
+      <div id="homeView">
+        <div class="section-title">Choose how to add</div>
+        <div class="actions-row">
+          <div tabindex="0" id="card-search" class="action-card" role="button">
+            <div class="icon">🔍</div>
+            <div class="label">Search & add</div>
+          </div>
+          <div tabindex="0" id="card-random" class="action-card" role="button">
+            <div class="icon">🎲</div>
+            <div class="label">Pick for me</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="trendingHeader"></span>
+          <div id="trendingTitle">🔥 Trending movies today</div>
+        </div>
+        <div id="trendingGrid" class="trendingGrid"></div>
+      </div>
+
+      <!-- SEARCH view (hidden by default) -->
+      <div id="searchView" style="display:none">
+        <div class="search-bar">
+          <div class="input-wrap">
+            <input id="searchInput" placeholder="Search movies (eg: sinners)" />
+          </div>
+          <button id="searchGoBtn" class="icon-circle" aria-label="Search" disabled>
+            <!-- disabled (default) icon: light / inactive -->
+            <svg id="searchIcon" width="24" height="24" viewBox="0 0 20 20" fill="none"
+              xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M8.75 0.666748C12.754 0.666748 15.9999 3.91273 16 7.91675C16 9.55787 15.4534 11.0708 14.5342 12.2859L19.041 16.7927C19.4315 17.1832 19.4314 17.8163 19.041 18.2068C18.6505 18.5973 18.0175 18.5973 17.627 18.2068L13.1201 13.7C11.9048 14.6198 10.3917 15.1667 8.75 15.1667C4.74596 15.1667 1.5 11.9208 1.5 7.91675C1.50007 3.91273 4.746 0.666748 8.75 0.666748ZM8.75 2.66675C5.85056 2.66675 3.50007 5.0173 3.5 7.91675C3.5 10.8162 5.85052 13.1667 8.75 13.1667C11.6495 13.1667 14 10.8163 14 7.91675C13.9999 5.0173 11.6495 2.66675 8.75 2.66675Z"
+                fill="#DACAF3" />
+            </svg>
+          </button>
+        </div>
+
+        <div id="searchResultsArea">
+          <div id="searchEmpty" class="empty-state">
+            <div
+              style="width:60px;height:60px;border-radius:8px;overflow:hidden;margin-top:100px;margin-bottom:24px;display:block;">
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M38.1804 24.5454L50.5977 18.3382C51.0134 18.1304 51.4752 18.0324 51.9395 18.0533C52.4037 18.0742 52.8549 18.2134 53.2502 18.4576C53.6456 18.7019 53.9719 19.0431 54.1984 19.4489C54.4248 19.8547 54.5438 20.3116 54.544 20.7764V39.2236C54.5438 39.6883 54.4248 40.1453 54.1984 40.5511C53.9719 40.9569 53.6456 41.2981 53.2502 41.5423C52.8549 41.7866 52.4037 41.9258 51.9395 41.9467C51.4752 41.9676 51.0134 41.8695 50.5977 41.6618L38.1804 35.4545V24.5454ZM5.45312 19.0909C5.45312 17.6443 6.0278 16.2569 7.05072 15.234C8.07365 14.211 9.46103 13.6364 10.9077 13.6364H32.7259C34.1725 13.6364 35.5599 14.211 36.5828 15.234C37.6057 16.2569 38.1804 17.6443 38.1804 19.0909V40.9091C38.1804 42.3557 37.6057 43.7431 36.5828 44.766C35.5599 45.789 34.1725 46.3636 32.7259 46.3636H10.9077C9.46103 46.3636 8.07365 45.789 7.05072 44.766C6.0278 43.7431 5.45313 42.3557 5.45312 40.9091V19.0909Z"
+                  fill="#D9D9D9" />
+                <path
+                  d="M38.1804 24.5454L50.5977 18.3382C51.0134 18.1304 51.4752 18.0324 51.9395 18.0533C52.4037 18.0742 52.8549 18.2134 53.2502 18.4576C53.6456 18.7019 53.9719 19.0431 54.1984 19.4489C54.4248 19.8547 54.5438 20.3116 54.544 20.7764V39.2236C54.5438 39.6883 54.4248 40.1453 54.1984 40.5511C53.9719 40.9569 53.6456 41.2981 53.2502 41.5423C52.8549 41.7866 52.4037 41.9258 51.9395 41.9467C51.4752 41.9676 51.0134 41.8695 50.5977 41.6618L38.1804 35.4545V24.5454ZM5.45312 19.0909C5.45312 17.6443 6.0278 16.2569 7.05072 15.234C8.07365 14.211 9.46103 13.6364 10.9077 13.6364H32.7259C34.1725 13.6364 35.5599 14.211 36.5828 15.234C37.6057 16.2569 38.1804 17.6443 38.1804 19.0909V40.9091C38.1804 42.3557 37.6057 43.7431 36.5828 44.766C35.5599 45.789 34.1725 46.3636 32.7259 46.3636H10.9077C9.46103 46.3636 8.07365 45.789 7.05072 44.766C6.0278 43.7431 5.45313 42.3557 5.45312 40.9091V19.0909Z"
+                  fill="url(#paint0_linear_1431_8097)" />
+                <path
+                  d="M38.1804 24.5454L50.5977 18.3382C51.0134 18.1304 51.4752 18.0324 51.9395 18.0533C52.4037 18.0742 52.8549 18.2134 53.2502 18.4576C53.6456 18.7019 53.9719 19.0431 54.1984 19.4489C54.4248 19.8547 54.5438 20.3116 54.544 20.7764V39.2236C54.5438 39.6883 54.4248 40.1453 54.1984 40.5511C53.9719 40.9569 53.6456 41.2981 53.2502 41.5423C52.8549 41.7866 52.4037 41.9258 51.9395 41.9467C51.4752 41.9676 51.0134 41.8695 50.5977 41.6618L38.1804 35.4545V24.5454ZM5.45312 19.0909C5.45312 17.6443 6.0278 16.2569 7.05072 15.234C8.07365 14.211 9.46103 13.6364 10.9077 13.6364H32.7259C34.1725 13.6364 35.5599 14.211 36.5828 15.234C37.6057 16.2569 38.1804 17.6443 38.1804 19.0909V40.9091C38.1804 42.3557 37.6057 43.7431 36.5828 44.766C35.5599 45.789 34.1725 46.3636 32.7259 46.3636H10.9077C9.46103 46.3636 8.07365 45.789 7.05072 44.766C6.0278 43.7431 5.45313 42.3557 5.45312 40.9091V19.0909Z"
+                  stroke="#DECCF5" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+                <defs>
+                  <linearGradient id="paint0_linear_1431_8097" x1="42.5" y1="29.9987" x2="10.6953" y2="41.5498"
+                    gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#EEE5FA" />
+                    <stop offset="1" stop-color="white" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+            </div>
+            <div class="empty-note">Type a name to see results</div>
+          </div>
+          <div id="searchResultsGrid" style="display:none" class="trendingGrid"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <div class="footer small" style="font-size:11px;color:#666;margin-top:10px;">
-    Uses the TMDB API.
+  <div id="snack" class="snack" aria-live="polite" role="status" style="display:none;">
+    <span id="snackIcon" class="snack-icon" aria-hidden="true"></span>
+    <span id="snackText" class="snack-text"></span>
   </div>
 
-  <div id="snack" class="snack"></div>
-
-<script>
-  // UI state
-  let mediaType = 'movie';
-  const chipMovie = document.getElementById('chip-movie');
-  const chipTv = document.getElementById('chip-tv');
-  const btnSearch = document.getElementById('btn-search');
-  const btnRandom = document.getElementById('btn-random');
-  const searchView = document.getElementById('searchView');
-  const backBtn = document.getElementById('backBtn');
-  const searchInput = document.getElementById('searchInput');
-  const resultsEl = document.getElementById('results');
-  const emptyState = document.getElementById('emptyState');
-  const snack = document.getElementById('snack');
-  const searchGo = document.getElementById('searchGo');
-
-  function setChip(type){
-    mediaType = type;
-    chipMovie.classList.toggle('active', type === 'movie');
-    chipTv.classList.toggle('active', type === 'tv');
-    searchInput.placeholder = type === 'movie' ? 'Search movies, e.g. Inception' : 'Search TV shows, e.g. Breaking Bad';
-  }
-  chipMovie.onclick = () => setChip('movie');
-  chipTv.onclick = () => setChip('tv');
-
-  btnSearch.onclick = () => {
-    searchView.style.display = 'block';
-    resultsEl.style.display = 'none';
-    emptyState.style.display = 'block';
-    searchInput.value = '';
-    searchInput.focus();
-    parent.postMessage({ pluginMessage: { type: 'opened-search', mediaType } }, '*');
-  };
-  backBtn.onclick = () => { searchView.style.display = 'none'; };
-
-  function showSnack(text, time=3000){
-    snack.innerText = text; snack.style.display = 'block';
-    clearTimeout(snack._t); snack._t = setTimeout(()=> snack.style.display = 'none', time);
-  }
-
-  function doSearch(){
-    const q = searchInput.value && searchInput.value.trim();
-    if(!q){ showSnack('Type something to search'); return; }
-    parent.postMessage({ pluginMessage: { type: 'search', mediaType, query: q } }, '*');
-    emptyState.innerText = 'Searching...'; emptyState.style.display = 'block'; resultsEl.style.display = 'none';
-  }
-  searchGo.onclick = doSearch;
-  searchInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') doSearch(); });
-
-  btnRandom.onclick = () => {
-    parent.postMessage({ pluginMessage: { type: 'random-pick', mediaType } }, '*');
-  };
-
-  window.onmessage = (event) => {
-    const msg = event.data.pluginMessage;
-    if(!msg) return;
-    if(msg.type === 'search-results') renderResults(msg.results || []);
-    if(msg.type === 'snackbar') showSnack(msg.message);
-    if(msg.type === 'inserted') showSnack(msg.message || 'Inserted poster');
-    if(msg.type === 'no-selection') showSnack(msg.message || 'Click the frame to continue');
-    if(msg.type === 'open-search-view') btnSearch.click();
-    if(msg.type === 'tmdb-debug') {
-      // debug info from host (only used when host sends it)
-      showSnack(`TMDB check: ${msg.status}`, 2500);
-      console.log('tmdb-debug:', msg);
-    }
-  };
-
-  function renderResults(results){
-    resultsEl.innerHTML = '';
-    if(!results || results.length === 0){
-      emptyState.innerText = 'No results. Try a different keyword.'; emptyState.style.display = 'block'; resultsEl.style.display = 'none'; return;
-    }
-    emptyState.style.display = 'none'; resultsEl.style.display = 'grid';
-    results.forEach(item => {
-      const div = document.createElement('div'); div.className = 'thumb';
-      const img = document.createElement('img'); img.src = item.poster_full || '';
-      img.alt = item.title || item.name || 'poster';
-      const caption = document.createElement('div'); caption.className='caption';
-      caption.innerText = (item.title || item.name) + (item.year ? ' • ' + item.year : '');
-      div.appendChild(img); div.appendChild(caption);
-      div.onclick = () => {
-        parent.postMessage({ pluginMessage: { type: 'insert-poster', mediaType, tmdbId: item.id, posterPath: item.poster_path, title: item.title || item.name } }, '*');
+  <script>
+    /* ---------- utils ---------- */
+    function debounce(fn, wait = 400) { let t; return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), wait); }; }
+    function showSnack(message, type = 'info', duration = 2000) {
+      const s = document.getElementById('snack');
+      const icon = document.getElementById('snackIcon');
+      const text = document.getElementById('snackText');
+      if (!s || !icon || !text) return;
+      text.textContent = message || '';
+      // icons (inline SVGs)
+      const svgs = {
+        frame: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">\n  <g id="Frame">\n    <path id="Vector" d="M5 9H19M5 15H19M11 4L7 20M17 4L13 20" stroke="#BF9CF7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>\n  </g>\n</svg>',
+        success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17l-5-5" stroke="#B9F18A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9v4" stroke="#FF8A80" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 16h.01" stroke="#FF8A80" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="#FF8A80" stroke-width="1.6" fill="none"/></svg>',
+        info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#9AA0A6" stroke-width="1.2" fill="#F3F4F6"/><path d="M12 8v.01" stroke="#6B7280" stroke-width="1.6" stroke-linecap="round"/><path d="M11 11h2v4h-2z" fill="#6B7280"/></svg>'
       };
-      resultsEl.appendChild(div);
-    });
-  }
+      icon.innerHTML = svgs[type] || svgs.info;
 
-  // notify host UI ready
-  parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
-</script>
+      // show
+      s.style.display = 'flex';
+      s.style.opacity = '1';
+      s.style.alignItems = 'center';
+      s.style.justifyContent = 'flex-start';
+      clearTimeout(s._t);
+      // auto hide
+      s._t = setTimeout(() => {
+        s.style.opacity = '0';
+        setTimeout(() => { s.style.display = 'none'; }, 220);
+      }, duration);
+    }
+
+    /* ---------- elements ---------- */
+    const chipMovie = document.getElementById('chip-movie');
+    const chipTv = document.getElementById('chip-tv');
+    const btnSearch = document.getElementById('btn-search'); // kept for compatibility may be null
+    const btnRandom = document.getElementById('btn-random'); // kept for compatibility
+    const searchView = document.getElementById('searchView');
+    const backBtn = document.getElementById('backBtn'); // legacy
+    const searchInput = document.getElementById('searchInput');
+    const searchGo = document.getElementById('searchGo');
+    const resultsEl = document.getElementById('results') || document.getElementById('searchResultsGrid');
+    const emptyState = document.getElementById('emptyState') || document.getElementById('searchEmpty');
+    const trendingGrid = document.getElementById('trendingGrid');
+    const bigArea = document.getElementById('trendingGrid');
+
+    // header controls
+    const headerBack = document.getElementById('headerBack');
+    const headerClose = document.getElementById('headerClose');
+    const headerIcon = document.getElementById('headerIcon');
+
+    // action cards
+    const cardSearch = document.getElementById('card-search');
+    const cardRandom = document.getElementById('card-random');
+
+    let mediaType = 'movie';
+    const MIN_QUERY_LEN = 1;
+
+    /* ---------- placeholder & helpers ---------- */
+    const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"><rect width="100%" height="100%" rx="12" ry="12" fill="#E5DAF4"/><g transform="translate(84, 120)"><path d="M20.0004 12L22.6671 4ZM9.33374 12L12.0004 4ZM1.33374 12H30.6671ZM4.53374 4H27.4671C27.8873 4 28.3034 4.08277 28.6917 4.24359C29.0799 4.4044 29.4327 4.64011 29.7298 4.93726C30.027 5.23441 30.2627 5.58717 30.4235 5.97541C30.5843 6.36365 30.6671 6.77977 30.6671 7.2V24.8C30.6671 25.6487 30.3299 26.4626 29.7298 27.0627C29.1297 27.6629 28.3158 28 27.4671 28H4.53374C3.68505 28 2.87111 27.6629 2.271 27.0627C1.67088 26.4626 1.33374 25.6487 1.33374 24.8V7.2C1.33374 6.77977 1.41651 6.36365 1.57733 5.97541C1.73814 5.58717 1.97385 5.23441 2.271 4.93726C2.87111 4.33714 3.68505 4 4.53374 4Z" fill="#EEE7F8"/><path d="M20.0004 12L22.6671 4M9.33374 12L12.0004 4M1.33374 12H30.6671M4.53374 4H27.4671C27.8873 4 28.3034 4.08277 28.6917 4.24359C29.0799 4.4044 29.4327 4.64011 29.7298 4.93726C30.027 5.23441 30.2627 5.58717 30.4235 5.97541C30.5843 6.36365 30.6671 6.77977 30.6671 7.2V24.8C30.6671 25.6487 30.3299 26.4626 29.7298 27.0627C29.1297 27.6629 28.3158 28 27.4671 28H4.53374C3.68505 28 2.87111 27.6629 2.271 27.0627C1.67088 26.4626 1.33374 25.6487 1.33374 24.8V7.2C1.33374 6.77977 1.41651 6.36365 1.57733 5.97541C1.73814 5.58717 1.97385 5.23441 2.271 4.93726C2.87111 4.33714 3.68505 4 4.53374 4Z" fill="#EEE7F8" stroke="#BEA8DA" stroke-width="2.28571" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/></g><text x="50%" y="182" fill="#BEA8DA" font-family="Inter, sans-serif" font-size="20" font-weight="500" text-anchor="middle" dominant-baseline="middle">No image</text></svg>');
+
+    // Function to show loading placeholders in trending grid
+    function showLoadingPlaceholders(container) {
+      if (!container) return;
+      container.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      // Show 6 placeholder cards (2 rows × 3 columns)
+      for (let i = 0; i < 6; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'placeholder-card';
+        frag.appendChild(placeholder);
+      }
+      container.appendChild(frag);
+    }
+
+    function setActiveChip(type) {
+      mediaType = type;
+      chipMovie.classList.toggle('active', type === 'movie');
+      chipTv.classList.toggle('active', type === 'tv');
+      const si = document.getElementById('searchInput');
+      if (si) si.placeholder = (type === 'tv') ? 'Search tv shows (eg: dahmer)' : 'Search movies (eg: sinners)';
+      // update trending title text
+      const titleEl = document.getElementById('trendingTitle');
+      if (titleEl) titleEl.textContent = (type === 'tv') ? '🔥 Trending tv shows today' : '🔥 Trending movies today';
+      // show loading placeholders while fetching
+      showLoadingPlaceholders(document.getElementById('trendingGrid'));
+      // request trending update
+      parent.postMessage({ pluginMessage: { type: 'get-trending', mediaType } }, '*');
+
+      // If user is in search view with a query, refresh search results
+      if (si && si.value && si.value.trim().length >= MIN_QUERY_LEN) {
+        parent.postMessage({ pluginMessage: { type: 'live-search', mediaType, query: si.value.trim() } }, '*');
+      }
+    }
+    chipMovie.addEventListener('click', () => setActiveChip('movie'));
+    chipTv.addEventListener('click', () => setActiveChip('tv'));
+
+    // header close/back
+    function showHeaderBack(show) {
+      if (headerBack) headerBack.style.display = show ? 'inline-flex' : 'none';
+      if (headerIcon) headerIcon.style.display = show ? 'none' : 'inline-flex';
+    }
+    if (headerBack) headerBack.addEventListener('click', () => { // go back to home
+      document.getElementById('searchView').style.display = 'none'; document.getElementById('homeView').style.display = 'block'; showHeaderBack(false);
+    });
+    if (headerClose) headerClose.addEventListener('click', () => parent.postMessage({ pluginMessage: { type: 'close' } }, '*'));
+
+    /* ---------- action cards wiring ---------- */
+    cardSearch && cardSearch.addEventListener('click', () => { // open search screen
+      document.getElementById('homeView').style.display = 'none'; document.getElementById('searchView').style.display = 'block'; showHeaderBack(true); searchInput && searchInput.focus();
+    });
+    cardSearch && cardSearch.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardSearch.click(); } });
+
+    cardRandom && cardRandom.addEventListener('click', () => { parent.postMessage({ pluginMessage: { type: 'random-pick', mediaType } }, '*'); });
+    cardRandom && cardRandom.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardRandom.click(); } });
+
+    /* ---------- search + results handling ---------- */
+    function renderGrid(container, items) {
+      // fast exit
+      container = container || document.getElementById('trendingGrid');
+      container.innerHTML = '';
+      if (!items || !items.length) return;
+
+      const frag = document.createDocumentFragment();
+
+      items.forEach(it => {
+        const cell = document.createElement('div');
+        cell.className = 'thumb';
+        // Store data for event delegation
+        cell.dataset.posterPath = it.poster_path || '';
+        cell.dataset.title = it.title || it.name || '';
+        cell.dataset.mediaType = mediaType; // Use current mediaType scope
+
+        const posterWrap = document.createElement('div');
+        posterWrap.className = 'poster';
+
+        const img = document.createElement('img');
+        img.alt = it.title || it.name || 'poster';
+        // prefer smaller image for thumbnails with srcset for responsiveness
+        const basePath = it.poster_full ? it.poster_full : (it.poster_path ? ('https://image.tmdb.org/t/p/') : '');
+        if (it.poster_full) {
+          img.src = it.poster_full;
+        } else if (it.poster_path) {
+          img.src = 'https://image.tmdb.org/t/p/w500' + it.poster_path;
+          img.srcset = 'https://image.tmdb.org/t/p/w200' + it.poster_path + ' 200w, https://image.tmdb.org/t/p/w500' + it.poster_path + ' 500w';
+          img.sizes = '(max-width:420px) 45vw, 30vw';
+        } else {
+          img.src = PLACEHOLDER;
+        }
+
+        // performance hints
+        img.loading = 'lazy';
+        img.decoding = 'async';
+
+        // fallback to placeholder on error
+        const onErr = () => { if (img.src !== PLACEHOLDER) img.src = PLACEHOLDER; img.removeEventListener('error', onErr); };
+        img.addEventListener('error', onErr);
+
+        posterWrap.appendChild(img);
+
+        // compute display title and year
+        const displayTitle = it.title || it.name || '';
+        const year = (it.release_date || it.first_air_date || '').slice(0, 4) || '';
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+
+        // For search results only: show combined line "<movie_name> ⋅ <year>"
+        if (container && container.id === 'searchResultsGrid') {
+          const yearPart = year ? (' \u00B7 ' + year) : '';
+          meta.innerHTML = `<div>${displayTitle}${yearPart}</div>` +
+            `<div style="color:#6b6471">${''}</div>`;
+        } else {
+          // trending or other grids: keep previous two-line layout
+          meta.innerHTML = `<div>${displayTitle}</div><div style="color:#6b6471">${year}</div>`;
+        }
+
+        cell.appendChild(posterWrap);
+        cell.appendChild(meta);
+        frag.appendChild(cell);
+      });
+
+      container.appendChild(frag);
+    }
+
+    // Event delegation for grid clicks
+    function handleGridClick(e) {
+      const cell = e.target.closest('.thumb');
+      if (!cell) return;
+
+      const posterPath = cell.dataset.posterPath;
+      const title = cell.dataset.title;
+      // Use the mediaType from the cell if stored, or global fallback
+      // Note: We stored it in renderGrid
+
+      if (posterPath) {
+        parent.postMessage({ pluginMessage: { type: 'insert-poster', mediaType, posterPath, title } }, '*');
+      }
+    }
+
+    // Attach delegation listeners
+    document.getElementById('trendingGrid').addEventListener('click', handleGridClick);
+    document.getElementById('searchResultsGrid').addEventListener('click', handleGridClick);
+
+    window.onmessage = (event) => {
+      const payload = (event.data && event.data.pluginMessage) || event.data;
+      if (!payload) return;
+      const msg = payload;
+      if (msg.type === 'trending-results') {
+        const items = msg.results || [];
+        requestAnimationFrame(() => renderGrid(document.getElementById('trendingGrid'), items));
+      }
+      else if (msg.type === 'search-results') {
+        const items = msg.results || [];
+        const grid = resultsEl;
+        if (items.length) { searchEmpty.style.display = 'none'; grid.style.display = 'grid'; requestAnimationFrame(() => renderGrid(grid, items)); }
+        else { searchEmpty.style.display = 'flex'; grid.style.display = 'none'; grid.innerHTML = ''; }
+      }
+      else if (msg.type === 'snackbar') {
+        showSnack(msg.message || '', 'info', msg.duration || 2000);
+      }
+      else if (msg.type === 'inserted') {
+        showSnack(msg.message || 'Added!', 'success', 2200);
+      }
+      else if (msg.type === 'no-selection') {
+        showSnack(msg.message || 'Click the frame, and then click poster', 'frame', 2800);
+      }
+      else if (msg.type === 'error') {
+        showSnack(msg.message || 'Something went wrong', 'error', 3500);
+      }
+      else if (msg.type === 'clear-search') {
+        resultsEl.innerHTML = '';
+        searchEmpty.style.display = 'flex';
+        resultsEl.style.display = 'none';
+      }
+    };
+
+    /* live search wiring */
+    function doLiveSearch(q) { if (!q || q.length < MIN_QUERY_LEN) { parent.postMessage({ pluginMessage: { type: 'clear-search' } }, '*'); return; } parent.postMessage({ pluginMessage: { type: 'live-search', mediaType, query: q } }, '*'); }
+    const debouncedLive = debounce((e) => doLiveSearch((e.target.value || '').trim()), 350);
+    searchInput && searchInput.addEventListener('input', debouncedLive);
+
+    // Enter/Go fallback
+    const searchGoBtn = document.getElementById('searchGoBtn');
+    // --- search button two-state icon handling ---
+    (function () {
+      const btn = document.getElementById('searchGoBtn');
+      const iconEl = document.getElementById('searchIcon');
+      if (!btn) return;
+
+      function setSearchButtonState(enabled) {
+        if (enabled) {
+          btn.removeAttribute('disabled');
+          // active (purple) icon
+          btn.innerHTML = '<svg id="searchIcon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">\n  <path d="M8.75 0.666748C12.754 0.666748 15.9999 3.91273 16 7.91675C16 9.55787 15.4534 11.0708 14.5342 12.2859L19.041 16.7927C19.4315 17.1832 19.4314 17.8163 19.041 18.2068C18.6505 18.5973 18.0175 18.5973 17.627 18.2068L13.1201 13.7C11.9048 14.6198 10.3917 15.1667 8.75 15.1667C4.74596 15.1667 1.5 11.9208 1.5 7.91675C1.50007 3.91273 4.746 0.666748 8.75 0.666748ZM8.75 2.66675C5.85056 2.66675 3.50007 5.0173 3.5 7.91675C3.5 10.8162 5.85052 13.1667 8.75 13.1667C11.6495 13.1667 14 10.8163 14 7.91675C13.9999 5.0173 11.6495 2.66675 8.75 2.66675Z" fill="#5719A3"/></svg>';
+        } else {
+          btn.setAttribute('disabled', '');
+          // inactive (light) icon
+          btn.innerHTML = '<svg id="searchIcon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">\n  <path d="M8.75 0.666748C12.754 0.666748 15.9999 3.91273 16 7.91675C16 9.55787 15.4534 11.0708 14.5342 12.2859L19.041 16.7927C19.4315 17.1832 19.4314 17.8163 19.041 18.2068C18.6505 18.5973 18.0175 18.5973 17.627 18.2068L13.1201 13.7C11.9048 14.6198 10.3917 15.1667 8.75 15.1667C4.74596 15.1667 1.5 11.9208 1.5 7.91675C1.50007 3.91273 4.746 0.666748 8.75 0.666748ZM8.75 2.66675C5.85056 2.66675 3.50007 5.0173 3.5 7.91675C3.5 10.8162 5.85052 13.1667 8.75 13.1667C11.6495 13.1667 14 10.8163 14 7.91675C13.9999 5.0173 11.6495 2.66675 8.75 2.66675Z" fill="#DACAF3"/></svg>';
+        }
+      }
+
+      // initialize according to current input value
+      setSearchButtonState((searchInput && (searchInput.value || '').trim().length >= MIN_QUERY_LEN));
+
+      // whenever user types (synchronous) update state immediately
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const q = (e.target.value || '').trim();
+          setSearchButtonState(q.length >= MIN_QUERY_LEN);
+        });
+      }
+
+      // click handler: only fire if enabled
+      btn.addEventListener('click', () => {
+        if (btn.hasAttribute('disabled')) return;
+        const q = (searchInput && (searchInput.value || '').trim()) || '';
+        if (!q || q.length < MIN_QUERY_LEN) { searchEmpty.style.display = 'flex'; resultsEl.style.display = 'none'; return; }
+        parent.postMessage({ pluginMessage: { type: 'search', mediaType, query: q } }, '*');
+      });
+    })();
+
+    // initial request for trending
+    // Show placeholders immediately while waiting for data
+    showLoadingPlaceholders(document.getElementById('trendingGrid'));
+    parent.postMessage({ pluginMessage: { type: 'get-trending', mediaType } }, '*');
+    parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
+  </script>
 </body>
+
 </html>

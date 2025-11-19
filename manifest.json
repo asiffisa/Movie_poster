@@ -3,6 +3,7 @@
   "id": "1571607350942224915",
   "api": "1.0.0",
   "main": "code.js",
+  "ui": "ui.html",
   "capabilities": [],
   "enableProposedApi": false,
   "documentAccess": "dynamic-page",
@@ -12,9 +13,9 @@
     "slides",
     "buzz"
   ],
-  "ui": "ui.html",
   "networkAccess": {
-    "allowedDomains": [ "https://api.themoviedb.org",
+    "allowedDomains": [
+      "https://api.themoviedb.org",
       "https://image.tmdb.org"
     ]
   }
