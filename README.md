@@ -423,4 +423,4 @@ This project uses The Movie Database (TMDB) API. You must comply with their [ter
 
 ---
 
-**Created with ❤️ for Figma by Asif
+**Created with ❤️ for Figma by Asif**
