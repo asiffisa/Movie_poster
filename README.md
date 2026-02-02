@@ -14,7 +14,6 @@ TV show posters directly into their designs using The Movie Database (TMDB) API.
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Architecture & Performance](#architecture--performance)
 - [Code Structure](#code-structure)
 - [API Configuration](#api-configuration)
 - [License](#license)
@@ -55,10 +54,6 @@ TV show posters directly into their designs using The Movie Database (TMDB) API.
 - **Modern Palette**: Vibrant lavender/purple theme (`#5719A3`).
 - **Persistent Feedback**: Informative snackbars with progress states (Fetching
   ⬇️, Inserting 🔄, Added ✅).
-- **Optically Centered**: Every icon and placeholder is mathematically and
-  visually balanced.
-- **Lazy Loading**: Images are fetched only when they enter the viewport for
-  maximum performance.
 
 ## 🚀 Installation
 
@@ -102,29 +97,6 @@ TV show posters directly into their designs using The Movie Database (TMDB) API.
      frame/rectangle.
    - **If nothing selected**: A new 200x300 poster node is created at your
      center.
-
-## 🏗️ Architecture & Performance
-
-### **The "High-Speed" Engine**
-
-The plugin uses a unique two-tier architecture to bypass standard Figma image
-bottlenecks:
-
-1. **Tier 1 (UI Thread)**: Images are loaded into a hidden canvas. We use
-   `canvas.toBlob` and `FileReader` to generate a `Uint8Array` directly from the
-   browser's rendered data. This bypasses the need for the Main Thread (plugin
-   logic) to make a second network request.
-2. **Tier 2 (Main Thread)**: Receives raw bytes and uses `figma.createImage()`
-   for instantaneous application to the scene.
-
-### **Optimization Work**
-
-- **SVG Compaction**: Large SVG data URLs for icons are moved to CSS variables,
-  reducing the `ui.html` weight and preventing IDE crashes.
-- **DOM Efficiency**: Uses `requestAnimationFrame` and `DocumentFragment` for
-  ultra-smooth grid rendering.
-- **Cleanup**: The codebase has been audited for dead code, duplicate functions,
-  and redundant API calls.
 
 ## 🏗️ Code Structure
 
