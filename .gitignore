@@ -9,6 +9,7 @@ out/
 # Local secret files
 code.local.js
 .env
+code.js
 
 # Archives
 *.zip

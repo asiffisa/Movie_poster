@@ -4,10 +4,15 @@ const fs = require('fs');
 const path = require('path');
 
 const envPath = path.join(__dirname, '.env');
-const codePath = path.join(__dirname, 'code.ts');
+const codePath = path.join(__dirname, 'code.js'); // Target the compiled JS file
 
 if (!fs.existsSync(envPath)) {
   console.error('Error: .env file not found. Copy .env.example to .env and add your TMDB API key.');
+  process.exit(1);
+}
+
+if (!fs.existsSync(codePath)) {
+  console.error('Error: code.js not found. Run "npm run build" first to generate it.');
   process.exit(1);
 }
 
@@ -21,6 +26,7 @@ if (!match || !match[1].trim()) {
 
 const apiKey = match[1].trim();
 let code = fs.readFileSync(codePath, 'utf8');
+// Injected the key into the compiled output
 code = code.replace('"__TMDB_API_KEY__"', JSON.stringify(apiKey));
 fs.writeFileSync(codePath, code, 'utf8');
 

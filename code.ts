@@ -1,6 +1,6 @@
 // ===== Poster Finder — code.ts =====
 
-const TMDB_KEY = "__TMDB_API_KEY__";
+const TMDB_KEY = "__TMDB_API_KEY__" as string;
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 
@@ -9,7 +9,7 @@ figma.showUI(__html__, { width: 440, height: 720 });
 const ui = (msg: any) => figma.ui.postMessage(msg);
 const snack = (message: string) => ui({ type: "snackbar", message });
 
-if (!TMDB_KEY || (TMDB_KEY as string) === "__TMDB_API_KEY__") {
+if (!TMDB_KEY || TMDB_KEY === "__TMDB_API_KEY__") {
   console.warn("Warning: TMDB key missing.");
 }
 
