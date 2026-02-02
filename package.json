@@ -4,6 +4,7 @@
   "description": "Your Figma Plugin",
   "main": "code.js",
   "scripts": {
+    "setup": "node setup.js",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
     "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
