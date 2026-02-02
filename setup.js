@@ -25,9 +25,27 @@ if (!match || !match[1].trim()) {
 }
 
 const apiKey = match[1].trim();
-let code = fs.readFileSync(codePath, 'utf8');
-// Injected the key into the compiled output
-code = code.replace('"__TMDB_API_KEY__"', JSON.stringify(apiKey));
-fs.writeFileSync(codePath, code, 'utf8');
 
-console.log('API key injected into code.js successfully.');
+function inject() {
+  if (!fs.existsSync(codePath)) return;
+  let code = fs.readFileSync(codePath, 'utf8');
+  if (code.includes('"__TMDB_API_KEY__"')) {
+    code = code.replace('"__TMDB_API_KEY__"', JSON.stringify(apiKey));
+    fs.writeFileSync(codePath, code, 'utf8');
+    console.log('API key injected into code.js successfully.');
+  }
+}
+
+// Run once initially
+inject();
+
+// Check for watch flag
+if (process.argv.includes('--watch')) {
+  console.log('Watching code.js for changes...');
+  fs.watch(codePath, (eventType) => {
+    if (eventType === 'change') {
+      // Small delay to ensure tsc has finished writing
+      setTimeout(inject, 200);
+    }
+  });
+}
