@@ -4,7 +4,7 @@ A Figma plugin that allows designers to search and insert high-quality movie and
 TV show posters directly into their designs using The Movie Database (TMDB) API.
 
 ![Movie Poster Finder](https://img.shields.io/badge/Figma-Plugin-purple)
-![Performance](https://img.shields.io/badge/Performance-High--Speed-blue)
+
 ![TMDB API](https://img.shields.io/badge/TMDB-API-green)
 
 <img src="assets/movie poter cover.jpg" height="600" alt="Movie Poster Cover">
@@ -18,7 +18,7 @@ TV show posters directly into their designs using The Movie Database (TMDB) API.
 - [API Configuration](#api-configuration)
 - [License](#license)
 
-## ✨ Features
+## Features
 
 ### ⚡ 1. **High-Speed Insertion**
 
@@ -51,7 +51,7 @@ TV show posters directly into their designs using The Movie Database (TMDB) API.
 
 ### 🎨 5. **Premium Interface**
 
-- **Modern Palette**: Vibrant lavender/purple theme (`#5719A3`).
+- **Modern Palette**: Vibrant lavender/purple theme.
 - **Persistent Feedback**: Informative snackbars with progress states (Fetching
   ⬇️, Added ✅).
 
