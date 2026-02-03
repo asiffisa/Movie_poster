@@ -53,7 +53,7 @@ TV show posters directly into their designs using The Movie Database (TMDB) API.
 
 - **Modern Palette**: Vibrant lavender/purple theme (`#5719A3`).
 - **Persistent Feedback**: Informative snackbars with progress states (Fetching
-  ⬇️, Inserting 🔄, Added ✅).
+  ⬇️, Added ✅).
 
 ## 🚀 Installation
 
