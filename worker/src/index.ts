@@ -20,7 +20,7 @@ interface RateLimitDecision {
 const TMDB_API_BASE = "https://api.themoviedb.org/3";
 const CACHE_SECONDS = 10 * 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 220;
+const RATE_LIMIT_MAX_REQUESTS = 200;
 const RATE_LIMIT_SHARD_PREFIX_LENGTH = 2;
 const MAX_QUERY_PARAMETERS = 8;
 const MAX_QUERY_LENGTH = 120;
