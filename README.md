@@ -136,7 +136,7 @@ worker/worker-configuration.d.ts  Generated Cloudflare binding types
 
 - TMDB requests go through the Cloudflare Worker; search terms and title IDs are sent to TMDB to return results.
 - The Worker caches successful TMDB responses for up to 10 minutes to reduce repeat requests.
-- The proxy accepts only the TMDB paths and query values used by this plugin, and limits each client to 220 TMDB requests per minute.
+- The proxy accepts only the TMDB paths and query values used by this plugin, and limits each client to 200 TMDB requests per minute.
 - Cloudflare logs and traces are enabled so production failures can be diagnosed without logging search terms.
 - Do not commit `.env`, `worker/.dev.vars`, API keys, or generated `code.js` files.
 - If a key is ever shared publicly, revoke it in TMDB and create a new one before deploying again.

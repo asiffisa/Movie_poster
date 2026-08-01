@@ -7,7 +7,7 @@
   <title>Movie Poster Plugin</title>
   <style>
     :root {
-      --font-stack: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      --font-stack: Inter;
       font-family: var(--font-stack);
 
       --space-1: 12px;
@@ -16,17 +16,19 @@
       --space-3: 28px;
       --header-height: 48px;
 
-      --bg: #F8F4FD;
+      --bg: #F2EBFA;
       --divider: #E1DAEA;
       --text: #111111;
 
       --chip-active-stroke: #5719A3;
+      --chip-active-border: #DEBEF8;
       --chip-active-fill: #EADCF9;
       --soft-accent: #E8D8F8;
-      --chip-inactive-stroke: #C0B3D0;
+      --dropdown-stroke: #E0C6F6;
+      --chip-inactive-stroke: #D9CFE3;
       --chip-inactive-fill: #F8F4FD;
 
-      --poster-radius: 12px;
+      --poster-radius: 16px;
       --card-radius: 22px;
 
       /* Shared SVG placeholder URL for better performance and file size */
@@ -121,7 +123,7 @@
     }
 
     .chip.active {
-      border-color: var(--soft-accent);
+      border-color: var(--chip-active-border);
       background: var(--chip-active-fill);
       color: var(--chip-active-stroke); /* Use #5719A3 for active text */
     }
@@ -148,11 +150,13 @@
     }
 
     .action-card {
-      background: #FFFFFF;
+      background:
+        linear-gradient(to bottom, #F1E5FA 0%, #FBF5FF 40%, #FFFFFF 100%) padding-box,
+        linear-gradient(to bottom, #C3B3D2 0%, #DED6EB 100%) border-box;
       border-radius: var(--card-radius);
       padding: 12px;
       padding-left: 16px;
-      border: 1.6px solid #BB91EE;
+      border: 1.6px solid transparent;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
@@ -202,10 +206,12 @@
     .rail-select {
       width: fit-content;
       flex: 0 0 auto;
+      display: flex;
+      align-items: center;
       max-width: calc(100vw - 32px);
-      border: 1px solid var(--soft-accent);
+      border: 1px solid var(--dropdown-stroke);
       border-radius: 999px;
-      padding: 12px 46px 12px 16px;
+      padding: 12px 36px 12px 16px;
       background: #FFFFFF;
       background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5.5L8 10.5L13 5.5' stroke='%23111111' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
@@ -219,9 +225,27 @@
       cursor: pointer;
     }
 
+    .rail-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .rail-label-icon {
+      flex: 0 0 auto;
+    }
+
+    .rail-label-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .rail-select:focus {
       outline: none;
-      border-color: var(--soft-accent);
+      border-color: var(--dropdown-stroke);
       box-shadow: none
     }
 
@@ -244,7 +268,9 @@
     }
 
     .rail-option {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       width: 100%;
       padding: 8px 12px;
       border: 0;
@@ -281,7 +307,7 @@
       aspect-ratio: 2 / 3;
       border-radius: var(--poster-radius);
       overflow: hidden;
-      background: #E5DAF4;
+      background: #E7D8F4;
       position: relative;
       background-image: var(--placeholder-url);
       background-repeat: no-repeat;
@@ -403,8 +429,8 @@
     .placeholder-card {
       width: 100%;
       aspect-ratio: 2 / 3;
-      background: #ECE4F6;
-      border-radius: 12px;
+      background: #E7D8F4;
+      border-radius: var(--poster-radius);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -504,7 +530,7 @@
       position: fixed;
       left: 12px;
       right: 12px;
-      bottom: 12px;
+      bottom: 20px;
       background: #111;
       color: #fff;
       padding: 10px 12px;
@@ -588,8 +614,8 @@
     <!-- chips sticky -->
     <div class="chips-bar">
       <div class="chips">
-        <div id="chip-movie" class="chip active" data-type="movie">🎬 Movies</div>
-        <div id="chip-tv" class="chip" data-type="tv">🍿 Tv shows</div>
+        <div id="chip-movie" class="chip active" data-type="movie"><span class="chip-icon" aria-hidden="true">🎬</span><span>Movies</span></div>
+        <div id="chip-tv" class="chip" data-type="tv"><span class="chip-icon" aria-hidden="true">🍿</span><span>Tv shows</span></div>
       </div>
     </div>
 
@@ -723,11 +749,11 @@
     const cardRandom = document.getElementById('card-random');
     const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">' +
-      '<rect width="100%" height="100%" rx="12" ry="12" fill="#E5DAF4"/>' +
+      '<rect width="100%" height="100%" rx="12" ry="12" fill="#E7D8F4"/>' +
       '<g transform="translate(84, 120)">' +
       '<path d="M20.0004 12L22.6671 4ZM9.33374 12L12.0004 4ZM1.33374 12H30.6671ZM4.53374 4H27.4671C27.8873 4 28.3034 4.08277 28.6917 4.24359C29.0799 4.4044 29.4327 4.64011 29.7298 4.93726C30.027 5.23441 30.2627 5.58717 30.4235 5.97541C30.5843 6.36365 30.6671 6.77977 30.6671 7.2V24.8C30.6671 25.6487 30.3299 26.4626 29.7298 27.0627C29.1297 27.6629 28.3158 28 27.4671 28H4.53374C3.68505 28 2.87111 27.6629 2.271 27.0627C1.67088 26.4626 1.33374 25.6487 1.33374 24.8V7.2C1.33374 6.77977 1.41651 6.36365 1.57733 5.97541C1.73814 5.58717 1.97385 5.23441 2.271 4.93726C2.87111 4.33714 3.68505 4 4.53374 4Z" fill="#EEE7F8"/>' +
       '<path d="M20.0004 12L22.6671 4M9.33374 12L12.0004 4M1.33374 12H30.6671M4.53374 4H27.4671C27.8873 4 28.3034 4.08277 28.6917 4.24359C29.0799 4.4044 29.4327 4.64011 29.7298 4.93726C30.027 5.23441 30.2627 5.58717 30.4235 5.97541C30.5843 6.36365 30.6671 6.77977 30.6671 7.2V24.8C30.6671 25.6487 30.3299 26.4626 29.7298 27.0627C29.1297 27.6629 28.3158 28 27.4671 28H4.53374C3.68505 28 2.87111 27.6629 2.271 27.0627C1.67088 26.4626 1.33374 25.6487 1.33374 24.8V7.2C1.33374 6.77977 1.41651 6.36365 1.57733 5.97541C1.73814 5.58717 1.97385 5.23441 2.271 4.93726C2.87111 4.33714 3.68505 4 4.53374 4Z" fill="#EEE7F8" stroke="#BEA8DA" stroke-width="2.28571" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '</g><text x="50%" y="182" fill="#BEA8DA" font-family="Inter, sans-serif" font-size="20" font-weight="500" text-anchor="middle" dominant-baseline="middle">No image</text></svg>'
+      '</g><text x="50%" y="182" fill="#BEA8DA" font-family="Inter" font-size="20" font-weight="500" text-anchor="middle" dominant-baseline="middle">No image</text></svg>'
     );
 
     // Function to show loading placeholders in trending grid
@@ -797,6 +823,10 @@
       });
     }
 
+    function posterVariants(cell, alternatives) {
+      return uniquePosterPaths(cell.dataset.originalPosterPath, alternatives);
+    }
+
     function cyclePoster(cell, img, variants) {
       const currentIndex = variants.indexOf(cell.dataset.posterPath);
       const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % variants.length : 0;
@@ -827,7 +857,7 @@
         event.stopPropagation();
         const key = posterKey(cell.dataset.mediaType, cell.dataset.mediaId);
         const alternatives = posterAlternatives.get(key);
-        const variants = uniquePosterPaths(cell.dataset.posterPath, alternatives);
+        const variants = posterVariants(cell, alternatives);
         if (alternatives && variants.length >= 2) {
           cyclePoster(cell, img, variants);
           return;
@@ -842,7 +872,7 @@
     }
 
     function updateShuffleAvailability(cell, posterWrap, img, alternatives) {
-      const variants = uniquePosterPaths(cell.dataset.posterPath, alternatives);
+      const variants = posterVariants(cell, alternatives);
       const shuffle = posterWrap.querySelector('.poster-shuffle');
       if (variants.length < 2) {
         posterWrap.classList.remove('has-alternatives');
@@ -913,6 +943,7 @@
         cell.className = 'thumb';
         // Store data for event delegation
         cell.dataset.posterPath = it.poster_path || '';
+        cell.dataset.originalPosterPath = it.poster_path || '';
         cell.dataset.title = it.title || it.name || '';
         cell.dataset.mediaId = it.id ? String(it.id) : '';
         cell.dataset.mediaType = it.mediaType || mediaType;
@@ -1108,6 +1139,28 @@
       railToggle.setAttribute('aria-expanded', String(open));
     }
 
+    function renderRailLabel(element, label) {
+      if (!element) return;
+      const separatorIndex = label.indexOf(' ');
+      const icon = separatorIndex >= 0 ? label.slice(0, separatorIndex) : '';
+      const text = separatorIndex >= 0 ? label.slice(separatorIndex + 1) : label;
+      element.textContent = '';
+      element.classList.add(element === railLabel ? 'rail-label' : 'rail-option-label');
+
+      if (icon) {
+        const iconElement = document.createElement('span');
+        iconElement.className = 'rail-label-icon';
+        iconElement.setAttribute('aria-hidden', 'true');
+        iconElement.textContent = icon;
+        element.appendChild(iconElement);
+      }
+
+      const textElement = document.createElement('span');
+      textElement.className = 'rail-label-text';
+      textElement.textContent = text;
+      element.appendChild(textElement);
+    }
+
     function fitRailToggle() {
       if (!railToggle || !railLabel) return;
       const measure = document.createElement('span');
@@ -1119,8 +1172,10 @@
       measure.style.font = computed.font;
       measure.style.fontWeight = computed.fontWeight;
       document.body.appendChild(measure);
-      // 12px left + 14px text-to-icon gap + 16px icon + 12px right.
-      const desiredWidth = Math.ceil(measure.getBoundingClientRect().width) + 54;
+      const horizontalPadding = parseFloat(computed.paddingLeft) + parseFloat(computed.paddingRight);
+      const borderWidth = parseFloat(computed.borderLeftWidth) + parseFloat(computed.borderRightWidth);
+      const labelGap = parseFloat(window.getComputedStyle(railLabel).gap) || 0;
+      const desiredWidth = Math.ceil(measure.getBoundingClientRect().width) + labelGap + horizontalPadding + borderWidth;
       measure.remove();
       // The canvas has 16px padding on both sides. Use its full usable width
       // so the label stays on one line instead of being constrained by a child.
@@ -1132,7 +1187,7 @@
     function updateRailOptions() {
       const labels = railLabels[mediaType];
       if (!labels[activeRail]) activeRail = 'trending-week';
-      if (railLabel) railLabel.textContent = labels[activeRail];
+      renderRailLabel(railLabel, labels[activeRail]);
       if (railMenu) {
         railMenu.innerHTML = '';
         Object.keys(labels).forEach((value) => {
@@ -1141,7 +1196,7 @@
           option.className = 'rail-option';
           option.setAttribute('role', 'option');
           option.setAttribute('aria-selected', String(value === activeRail));
-          option.textContent = labels[value];
+          renderRailLabel(option, labels[value]);
           option.addEventListener('click', () => {
             activeRail = value;
             updateRailOptions();
@@ -1153,6 +1208,7 @@
         });
       }
       fitRailToggle();
+      requestAnimationFrame(fitRailToggle);
     }
 
     function requestRail() {
@@ -1173,6 +1229,8 @@
         if (railToggle) railToggle.focus();
       }
     });
+    window.addEventListener('resize', fitRailToggle);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitRailToggle);
     updateRailOptions();
 
     // initial request for the selected discovery rail

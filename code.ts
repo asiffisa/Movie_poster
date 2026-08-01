@@ -301,7 +301,7 @@ function getOrCreateTargetNode(): PosterTarget | null {
     return selection[0];
   }
 
-  ui({ type: "no-selection", message: "Select one frame or rectangle, or deselect everything to create a new poster." });
+  ui({ type: "no-selection", message: "Select a frame or rectangle to add a poster." });
   return null;
 }
 
@@ -396,7 +396,7 @@ async function performSearch(mode: SearchMode, query: string): Promise<void> {
   const trimmedQuery = query.trim();
   const serial = ++searchSerial;
 
-  if (trimmedQuery.length < 2) {
+  if (trimmedQuery.length < 1) {
     ui({ type: "search-results", items: [], results: [], query: trimmedQuery, mode });
     return;
   }
