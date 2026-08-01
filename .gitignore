@@ -3,6 +3,7 @@
 
 # Build folders (in case you add them later)
 node_modules/
+worker/.wrangler/
 dist/
 out/
 
@@ -10,6 +11,8 @@ out/
 code.local.js
 .env
 code.js
+.dev.vars
+.dev.vars.*
 
 # Archives
 *.zip
