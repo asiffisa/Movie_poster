@@ -1,8 +1,18 @@
 # Movie Poster for Figma
 
+[![Figma Plugin](https://img.shields.io/badge/Figma-Plugin-9747FF?logo=figma&logoColor=white)](https://www.figma.com/community/plugins)
+[![TMDB API](https://img.shields.io/badge/TMDB-API-01B4E4)](https://www.themoviedb.org/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Find movie and TV posters in Figma, then place a high-quality image on your canvas in one click.
 
 The plugin uses TMDB for title data and a small Cloudflare Worker for API requests. Your TMDB API key stays on the server and is never included in the Figma plugin.
+
+<p align="center">
+  <img src="assets/movie poter cover 11.jpg" width="960" alt="Movie Poster for Figma cover">
+</p>
 
 ## Features
 
