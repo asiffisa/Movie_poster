@@ -1,45 +1,37 @@
 {
   "name": "movie-poster",
   "version": "1.0.0",
-  "description": "Your Figma Plugin",
+  "description": "Find and insert high-quality TMDB movie and TV posters in Figma.",
   "main": "code.js",
   "scripts": {
     "setup": "node setup.js",
     "build": "tsc -p tsconfig.json && node setup.js",
-    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
-    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
-    "watch": "tsc -p tsconfig.json --watch & node setup.js --watch"
+    "lint": "eslint code.ts worker/src",
+    "lint:fix": "eslint code.ts worker/src --fix",
+    "watch": "tsc -p tsconfig.json --watch & node setup.js --watch",
+    "worker:dev": "wrangler dev --config worker/wrangler.jsonc",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.jsonc",
+    "worker:check": "tsc -p worker/tsconfig.json",
+    "worker:types:check": "wrangler types worker/worker-configuration.d.ts --config worker/wrangler.jsonc --check"
   },
-  "author": "",
-  "license": "",
+  "author": "Asif",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asiffisa/Movie_poster.git"
+  },
+  "bugs": {
+    "url": "https://github.com/asiffisa/Movie_poster/issues"
+  },
+  "homepage": "https://github.com/asiffisa/Movie_poster#readme",
   "devDependencies": {
-    "@figma/eslint-plugin-figma-plugins": "*",
+    "@eslint/js": "^10.0.1",
+    "@figma/eslint-plugin-figma-plugins": "^1.0.0",
     "@figma/plugin-typings": "*",
-    "@typescript-eslint/eslint-plugin": "^6.12.0",
-    "@typescript-eslint/parser": "^6.12.0",
-    "eslint": "^8.54.0",
-    "typescript": "^5.3.2"
-  },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:@figma/figma-plugins/recommended"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "project": "./tsconfig.json"
-    },
-    "root": true,
-    "rules": {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          "argsIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "caughtErrorsIgnorePattern": "^_"
-        }
-      ]
-    }
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "eslint": "^10.8.0",
+    "typescript": "^5.3.2",
+    "wrangler": "4.118.0"
   }
 }

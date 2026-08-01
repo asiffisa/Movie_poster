@@ -1,127 +1,149 @@
-# Movie Poster Finder - Figma Plugin
+# Movie Poster for Figma
 
-A Figma plugin that allows designers to search and insert high-quality movie and
-TV show posters directly into their designs using The Movie Database (TMDB) API.
+Find movie and TV posters in Figma, then place a high-quality image on your canvas in one click.
 
-![Movie Poster Finder](https://img.shields.io/badge/Figma-Plugin-purple)
-![TMDB API](https://img.shields.io/badge/TMDB-API-green)
-
-<img src="assets/movie poter cover.jpg" height="600" alt="Movie Poster Cover">
-
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Code Structure](#code-structure)
-- [API Configuration](#api-configuration)
-- [License](#license)
+The plugin uses TMDB for title data and a small Cloudflare Worker for API requests. Your TMDB API key stays on the server and is never included in the Figma plugin.
 
 ## Features
 
-### ⚡ 1. **High-Speed Insertion**
+- 🔎 Search movies and TV shows as you type.
+- 🧭 Switch between Trending this week, Popular, Upcoming movies, and Top rated lists.
+- 🎲 Use **Pick for me** to add a random well-rated title.
+- 🔀 Choose an alternative poster when a title has more than one artwork option.
+- 🖼️ Insert the original TMDB poster when available, with a smaller-image fallback if needed.
+- 🎯 Add a poster to a selected Figma frame or rectangle, or create a new 200 × 300 poster on the canvas.
 
-- **Canvas Capture Engine**: Uses a specialized UI-thread capture logic to grab
-  image data directly from rendered DOM elements.
-- **CORS Bypass**: Eliminates double-downloading and CORS issues by "taking a
-  snapshot" of the thumbnail.
-- **Near-Instant**: Posters are applied to frames in milliseconds, providing a
-  snappy, premium feel.
+## How it works
 
-### 🔍 2. **Smart Search & Caching**
-
-- **Live Search**: Results appear in real-time as you type, with smart
-  debouncing.
-- **Result Caching**: Results for Movies and TV shows are cached in memory.
-  Toggling between categories is now instant with zero network delay.
-- **History Aware**: Remembers your latest search results within the session.
-
-### 🔥 3. **Trending Content**
-
-- View daily trending movies or TV shows (up to 12 items).
-- Automatically updates when switching between "🎬 Movies" and "📺 TV" chips.
-- Custom loading placeholders with movie slate icons.
-
-### 🎲 4. **Random Poster Selection**
-
-- "Pick for me" feature selects highly-rated posters (7.0+ score).
-- Automatically fills your selection or creates a new poster node at your
-  viewport center.
-
-### 🎨 5. **Premium Interface**
-
-- **Modern Palette**: Vibrant lavender/purple theme.
-- **Persistent Feedback**: Informative snackbars with progress states (Fetching
-  ⬇️, Added ✅).
-
-## 🚀 Installation
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/)
-- Figma desktop application
-- TMDB API key (free)
-
-### Setup Steps
-
-1. **Clone or download this repository**
-   ```bash
-   cd /path/to/plugin/directory
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Compile TypeScript**
-   ```bash
-   npm run build
-   # Or use watch mode
-   npm run watch
-   ```
-
-4. **Load in Figma**
-   - Open Figma Desktop
-   - Go to `Plugins` > `Development` > `Import plugin from manifest`
-   - Select the `manifest.json` file from this directory.
-
-## 📖 Usage
-
-1. **Choose Category**: Click "🎬 Movies" or "📺 TV" to see what's trending.
-2. **Search**: Use the search action card to find specific posters.
-3. **Random Pick**: Click "Pick for me" for high-quality surprise posters.
-4. **Insert**: Click any poster thumbnail.
-   - **If selected**: The poster replaces the fill of your selected
-     frame/rectangle.
-   - **If nothing selected**: A new 200x300 poster node is created at your
-     center.
-
-## 🏗️ Code Structure
-
-```
-Movie_poster/
-├── manifest.json      # Plugin config & network permissions
-├── code.ts           # Main plugin thread (insertion logic, node management)
-├── ui.html           # UI thread (UI, styling, canvas capture engine)
-├── package.json      # Scripts & dependencies
-└── README.md         # Documentation
+```text
+Figma plugin → Cloudflare Worker → TMDB API
+                    ↑
+          TMDB key is stored as a secret
 ```
 
-## 🔧 API Configuration
+Poster images are downloaded from TMDB's public image CDN. The plugin does not put the TMDB API key in the plugin bundle or in Git.
 
-**Base URL:** `https://api.themoviedb.org/3`
+## Set up the project
 
-**Network Permissions:** The plugin is configured with `networkAccess`
-permissions for `api.themoviedb.org` and `image.tmdb.org` to ensure smooth image
-fetching.
+You need a current Node.js LTS version, a TMDB API key, and a Cloudflare account.
 
-## 📝 License
+### 1. Install dependencies
 
-This project uses The Movie Database (TMDB) API but is not endorsed or certified
-by TMDB. You must comply with their
-[terms of service](https://www.themoviedb.org/terms-of-use).
+```bash
+npm install
+```
 
----
+### 2. Deploy the TMDB proxy
 
-**Created with ❤️ for Figma by Asif**
+Log in to Cloudflare:
+
+```bash
+npx wrangler login
+```
+
+Store the TMDB key as a Cloudflare secret. Paste it only when the command asks for it:
+
+```bash
+npx wrangler secret put TMDB_API_KEY --config worker/wrangler.jsonc
+```
+
+Deploy the Worker:
+
+```bash
+npm run worker:deploy
+```
+
+Cloudflare will show a URL like this:
+
+```text
+https://movie-poster-tmdb-proxy.<your-subdomain>.workers.dev
+```
+
+### 3. Connect the plugin to the proxy
+
+Copy `.env.example` to a new `.env` file. Add the Worker URL only:
+
+```env
+TMDB_PROXY_URL=https://movie-poster-tmdb-proxy.<your-subdomain>.workers.dev
+```
+
+Do not put `TMDB_API_KEY` in `.env`.
+
+### 4. Build and load the plugin in Figma
+
+```bash
+npm run build
+```
+
+In the Figma desktop app, choose **Plugins → Development → Import plugin from manifest** and select this repository's `manifest.json`.
+
+## Local development
+
+To test the Worker before deployment, create `worker/.dev.vars` yourself with this one line:
+
+```env
+TMDB_API_KEY=your_tmdb_key_here
+```
+
+Then run:
+
+```bash
+npm run worker:dev
+```
+
+Set the root `.env` file to:
+
+```env
+TMDB_PROXY_URL=http://localhost:8787
+```
+
+Finally, run `npm run build` and launch the development plugin in Figma. The build adds only your exact Worker domain to `manifest.json`; rerun it and re-import the manifest if the Worker URL changes. `.env` and `.dev.vars` files are ignored by Git.
+
+## Useful commands
+
+```bash
+npm run build          # Build the Figma plugin
+npm run lint           # Check the plugin TypeScript
+npm run worker:check   # Type-check the Cloudflare Worker
+npm run worker:types:check # Verify generated Worker binding types
+npm run worker:dev     # Run the Worker locally
+npm run worker:deploy  # Deploy the Worker
+```
+
+## Project structure
+
+```text
+code.ts                 Figma plugin controller and poster insertion
+ui.html                 Plugin interface
+worker/src/index.ts     Restricted TMDB proxy
+worker/wrangler.jsonc   Worker deployment settings
+setup.js                Adds the public Worker URL and local UI assets at build time
+worker/worker-configuration.d.ts  Generated Cloudflare binding types
+.github/workflows/ci.yml          Clean-install verification for pull requests
+```
+
+## Privacy and security
+
+- TMDB requests go through the Cloudflare Worker; search terms and title IDs are sent to TMDB to return results.
+- The Worker caches successful TMDB responses for up to 10 minutes to reduce repeat requests.
+- The proxy accepts only the TMDB paths and query values used by this plugin, and limits each client to 220 TMDB requests per minute.
+- Cloudflare logs and traces are enabled so production failures can be diagnosed without logging search terms.
+- Do not commit `.env`, `worker/.dev.vars`, API keys, or generated `code.js` files.
+- If a key is ever shared publicly, revoke it in TMDB and create a new one before deploying again.
+
+## Contributing
+
+Contributions are welcome. Please keep changes focused, avoid adding secrets to Git, and run these before opening a pull request:
+
+```bash
+npm run lint
+npm run worker:types:check
+npm run worker:check
+npm run build
+```
+
+## Attribution and license
+
+This product uses the TMDB API but is not endorsed or certified by TMDB. Movie and TV data and artwork are provided by [TMDB](https://www.themoviedb.org/).
+
+Released under the [MIT License](LICENSE).

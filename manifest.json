@@ -15,8 +15,11 @@
   ],
   "networkAccess": {
     "allowedDomains": [
-      "https://api.themoviedb.org",
+      "https://movie-poster-tmdb-proxy.cradle5.workers.dev",
       "https://image.tmdb.org"
+    ],
+    "devAllowedDomains": [
+      "http://localhost:8787"
     ]
   }
 }
