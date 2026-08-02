@@ -14,6 +14,12 @@ The plugin uses TMDB for title data and a small Cloudflare Worker for API reques
   <img src="assets/movie poter cover 11.jpg" width="960" alt="Movie Poster for Figma cover">
 </p>
 
+<p align="center">
+  <a href="https://www.figma.com/community/plugin/1571607350942224915/movie-poster">Try it in Figma</a>
+  ·
+  <a href="https://github.com/asiffisa/Movie_poster/issues">Report an issue</a>
+</p>
+
 ## Features
 
 - 🔎 Search movies and TV shows as you type.

@@ -11,8 +11,9 @@ const manifestPath = path.join(__dirname, 'manifest.json');
 const placeholder = '"__TMDB_PROXY_URL__"';
 
 const uiAssets = {
-  search: path.join(__dirname, 'assets', 'Search mv.png'),
-  dice: path.join(__dirname, 'assets', 'Dice mv.png')
+  search: { path: path.join(__dirname, 'assets', 'Search mv.png'), mimeType: 'image/png' },
+  dice: { path: path.join(__dirname, 'assets', 'Dice mv.png'), mimeType: 'image/png' },
+  tmdb: { path: path.join(__dirname, 'assets', 'TMDB logo.svg'), mimeType: 'image/svg+xml' }
 };
 
 if (!fs.existsSync(codePath)) {
@@ -72,18 +73,18 @@ function injectUiAssets() {
   if (!fs.existsSync(uiPath)) return;
   let html = fs.readFileSync(uiPath, 'utf8');
 
-  Object.entries(uiAssets).forEach(([name, assetPath]) => {
-    if (!fs.existsSync(assetPath)) {
-      console.warn(`UI asset missing: ${assetPath}`);
+  Object.entries(uiAssets).forEach(([name, asset]) => {
+    if (!fs.existsSync(asset.path)) {
+      console.warn(`UI asset missing: ${asset.path}`);
       return;
     }
-    const marker = `data-action-asset="${name}" src="data:image/png;base64,`;
+    const marker = `data-action-asset="${name}" src="data:${asset.mimeType};base64,`;
     const markerStart = html.indexOf(marker);
     if (markerStart < 0) return;
     const base64Start = markerStart + marker.length;
     const base64End = html.indexOf('"', base64Start);
     if (base64End < 0) return;
-    const base64 = fs.readFileSync(assetPath).toString('base64');
+    const base64 = fs.readFileSync(asset.path).toString('base64');
     html = `${html.slice(0, base64Start)}${base64}${html.slice(base64End)}`;
   });
 

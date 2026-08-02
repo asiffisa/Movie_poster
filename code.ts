@@ -10,6 +10,7 @@ type DiscoveryRail = "trending-week" | "popular" | "upcoming" | "now-playing" | 
 type PosterTarget = RectangleNode | FrameNode;
 type QueryParams = Record<string, string | undefined>;
 const MAX_RAIL_ITEMS = 21;
+const MAX_DETAIL_CACHE_ENTRIES = 60;
 
 interface TmdbMedia {
   id: number;
@@ -464,6 +465,14 @@ function detailCacheKey(mediaType: MediaType, id: number): string {
   return `${mediaType}:${id}`;
 }
 
+function cacheDetail<T>(cache: Map<string, T>, key: string, value: T): void {
+  if (!cache.has(key) && cache.size >= MAX_DETAIL_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey !== undefined) cache.delete(oldestKey);
+  }
+  cache.set(key, value);
+}
+
 async function getPosterAlternatives(mediaType: MediaType, id: number): Promise<string[]> {
   const cacheKey = detailCacheKey(mediaType, id);
   const cached = posterAlternativesCache.get(cacheKey);
@@ -480,7 +489,7 @@ async function getPosterAlternatives(mediaType: MediaType, id: number): Promise<
       seen.add(path);
       return true;
     });
-  posterAlternativesCache.set(cacheKey, paths);
+  cacheDetail(posterAlternativesCache, cacheKey, paths);
   return paths;
 }
 
@@ -541,7 +550,7 @@ async function getDetails(mediaType: MediaType, id: number): Promise<DetailPaylo
     posters,
     recommendations
   };
-  detailsCache.set(cacheKey, payload);
+  cacheDetail(detailsCache, cacheKey, payload);
   return payload;
 }
 
