@@ -581,6 +581,23 @@
       font-size: 15px
     }
 
+    .snack-retry {
+      display: none;
+      flex: 0 0 auto;
+      border: 0;
+      padding: 4px 0;
+      background: transparent;
+      color: #BF9CF7;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .snack-retry:hover {
+      color: #FFFFFF;
+    }
+
     /* focus */
     button:focus,
     .chip:focus,
@@ -712,6 +729,7 @@
   <div id="snack" class="snack" aria-live="polite" role="status" style="display:none;">
     <span id="snackIcon" class="snack-icon" aria-hidden="true"></span>
     <span id="snackText" class="snack-text"></span>
+    <button id="snackRetry" class="snack-retry" type="button">Retry</button>
   </div>
 
   <script>
@@ -735,11 +753,12 @@
       }
       cache.set(key, value);
     }
-    function showSnack(message, iconType = 'info', duration = 2000) {
+    function showSnack(message, iconType = 'info', duration = 2000, action = null) {
       const s = document.getElementById('snack');
       const icon = document.getElementById('snackIcon');
       const text = document.getElementById('snackText');
-      if (!s || !icon || !text) return;
+      const retryButton = document.getElementById('snackRetry');
+      if (!s || !icon || !text || !retryButton) return;
       text.textContent = message || '';
       const svgs = {
         frame: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 9H19M5 15H19M11 4L7 20M17 4L13 20" stroke="#BF9CF7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -750,6 +769,8 @@
         none: ''
       };
       if (iconType === 'none') { icon.style.display = 'none'; } else { icon.style.display = 'block'; icon.innerHTML = svgs[iconType] || svgs.info; }
+      retryButton.style.display = typeof action === 'function' ? 'inline-flex' : 'none';
+      retryButton.onclick = typeof action === 'function' ? action : null;
       s.style.display = 'flex'; s.style.opacity = '1';
       clearTimeout(s._t);
       s._t = setTimeout(() => { s.style.opacity = '0'; setTimeout(() => { s.style.display = 'none'; }, 220); }, duration);
@@ -919,6 +940,19 @@
       }
     }
 
+    function resetPosterAlternativesRequest(mediaTypeValue, id) {
+      const key = posterKey(mediaTypeValue, id);
+      pendingPosterAlternatives.delete(key);
+      document.querySelectorAll('.thumb').forEach((cell) => {
+        if (cell.dataset.mediaType !== mediaTypeValue || Number(cell.dataset.mediaId) !== Number(id)) return;
+        const control = cell.querySelector('.poster-shuffle');
+        if (control) {
+          control.disabled = false;
+          control.classList.remove('is-loading');
+        }
+      });
+    }
+
     function requestPosterAlternatives(cell, posterWrap, img) {
       const id = Number(cell.dataset.mediaId);
       const mediaTypeValue = cell.dataset.mediaType;
@@ -1084,6 +1118,9 @@
       else if (msg.type === 'poster-alternatives') {
         applyPosterAlternatives(msg.mediaType, msg.id, msg.posterPaths);
       }
+      else if (msg.type === 'poster-alternatives-error') {
+        resetPosterAlternativesRequest(msg.mediaType, msg.id);
+      }
       else if (msg.type === 'search-results') {
         const items = msg.items || msg.results || [];
         const grid = resultsEl;
@@ -1111,7 +1148,10 @@
         showSnack(msg.message || 'Click the frame, and then click poster', 'frame', 2800);
       }
       else if (msg.type === 'error') {
-        showSnack(msg.message || 'Something went wrong', 'error', 3500);
+        const retry = msg.retryable
+          ? () => parent.postMessage({ pluginMessage: { type: 'retry-last-action' } }, '*')
+          : null;
+        showSnack(msg.message || 'Something went wrong', 'error', msg.retryable ? 6000 : 3500, retry);
       }
       else if (msg.type === 'clear-search') {
         resultsEl.innerHTML = '';

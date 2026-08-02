@@ -11,6 +11,8 @@ type PosterTarget = RectangleNode | FrameNode;
 type QueryParams = Record<string, string | undefined>;
 const MAX_RAIL_ITEMS = 21;
 const MAX_DETAIL_CACHE_ENTRIES = 60;
+const MAX_FETCH_ATTEMPTS = 3;
+const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 interface TmdbMedia {
   id: number;
@@ -62,6 +64,13 @@ interface TmdbPoster {
 
 interface TmdbImagesResponse {
   posters?: TmdbPoster[];
+}
+
+interface FetchResponse {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+  arrayBuffer(): Promise<ArrayBuffer>;
 }
 
 interface TmdbDetails extends TmdbMedia {
@@ -129,6 +138,7 @@ type UiMessage =
   | { type: "get-details"; mediaType?: string; id?: number }
   | { type: "get-person-credits"; personId?: number; name?: string }
   | { type: "insert-template"; mediaType?: string; id?: number; posterPath?: string }
+  | { type: "retry-last-action" }
   | { type: "close" };
 
 figma.showUI(__html__, { width: 460, height: 760 });
@@ -177,7 +187,27 @@ function normalizeDiscoveryRail(value: string | undefined): DiscoveryRail {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "An unexpected error occurred.";
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  if (typeof error === "object" && error !== null) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+    const name = (error as { name?: unknown }).name;
+    if (typeof name === "string" && name.trim()) return name;
+  }
+  return "An unexpected error occurred.";
+}
+
+function isRetryableError(error: unknown): boolean {
+  if (typeof error === "object" && error !== null && "retryable" in error) {
+    const retryable = (error as { retryable?: unknown }).retryable;
+    if (retryable === true) return true;
+  }
+  const message = errorMessage(error).toLowerCase();
+  return message.includes("network")
+    || message.includes("failed to fetch")
+    || /request failed \(http (408|425|429|5\d{2})\)/.test(message)
+    || /poster download failed \(http (408|425|429|5\d{2})\)/.test(message);
 }
 
 function valueOrEmpty(value: string | undefined | null): string {
@@ -248,12 +278,40 @@ function serializeQuery(params: QueryParams): string {
     .join("&");
 }
 
+function normalizedNetworkError(error: unknown): Error {
+  const message = errorMessage(error);
+  return new Error(message === "An unexpected error occurred." ? "Network request failed." : message);
+}
+
+async function fetchWithRetry(url: string): Promise<FetchResponse> {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      if (response.ok || !RETRYABLE_HTTP_STATUSES.has(response.status) || attempt === MAX_FETCH_ATTEMPTS) {
+        return response;
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt === MAX_FETCH_ATTEMPTS) {
+        throw normalizedNetworkError(error);
+      }
+    }
+
+    // Back off briefly so a transient connection has time to recover.
+    await new Promise<void>((resolve) => setTimeout(resolve, 150 * (2 ** (attempt - 1))));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Network request failed.");
+}
+
 async function fetchJson<T>(path: string, params: QueryParams = {}): Promise<T> {
   const proxyUrl = ensureProxy();
   const query = serializeQuery(params);
   const url = `${proxyUrl}/tmdb${path}${query ? `?${query}` : ""}`;
 
-  const response = await fetch(url);
+  const response = await fetchWithRetry(url);
   if (!response.ok) {
     let detail = "";
     try {
@@ -262,7 +320,9 @@ async function fetchJson<T>(path: string, params: QueryParams = {}): Promise<T> 
     } catch {
       // A response body is optional for an HTTP error.
     }
-    throw new Error(detail || `Request failed (HTTP ${response.status}).`);
+    const error = new Error(detail || `Request failed (HTTP ${response.status}).`) as Error & { retryable?: boolean };
+    error.retryable = RETRYABLE_HTTP_STATUSES.has(response.status);
+    throw error;
   }
   return (await response.json()) as T;
 }
@@ -279,7 +339,6 @@ async function initialise(): Promise<void> {
     })
     .catch((error: unknown) => {
       bootstrapPromise = null;
-      ui({ type: "error", message: errorMessage(error) });
       throw error;
     });
 
@@ -307,8 +366,12 @@ function getOrCreateTargetNode(): PosterTarget | null {
 }
 
 async function createImageFromUrl(url: string): Promise<Image> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Poster download failed (HTTP ${response.status}).`);
+  const response = await fetchWithRetry(url);
+  if (!response.ok) {
+    const error = new Error(`Poster download failed (HTTP ${response.status}).`) as Error & { retryable?: boolean };
+    error.retryable = RETRYABLE_HTTP_STATUSES.has(response.status);
+    throw error;
+  }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.length === 0) throw new Error("Poster download was empty.");
   return figma.createImage(bytes);
@@ -387,8 +450,8 @@ async function fetchTrending(mediaType: MediaType, rail: DiscoveryRail): Promise
     ui({ type: "trending-results", items, results: items, mediaType, rail });
   } catch (error) {
     if (serial === trendingSerial) {
-      ui({ type: "error", message: errorMessage(error) });
       ui({ type: "trending-results", items: [], results: [], mediaType, rail });
+      throw error;
     }
   }
 }
@@ -426,8 +489,8 @@ async function performSearch(mode: SearchMode, query: string): Promise<void> {
     ui({ type: "search-results", items, results: items, query: trimmedQuery, mode });
   } catch (error) {
     if (serial === searchSerial) {
-      ui({ type: "error", message: errorMessage(error) });
       ui({ type: "search-results", items: [], results: [], query: trimmedQuery, mode });
+      throw error;
     }
   }
 }
@@ -441,24 +504,20 @@ async function randomPick(mediaType: MediaType): Promise<void> {
     "vote_count.gte": "50"
   };
 
-  try {
-    const firstPage = await fetchJson<TmdbListResponse<TmdbMedia>>(`/discover/${mediaType}`, params);
-    const totalPages = Math.max(1, Math.min(firstPage.total_pages || 1, 500));
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      params.page = String(Math.floor(Math.random() * totalPages) + 1);
-      const page = await fetchJson<TmdbListResponse<TmdbMedia>>(`/discover/${mediaType}`, params);
-      const candidates = (page.results || [])
-        .map((media) => toPosterItem(media, mediaType))
-        .filter((item): item is PosterItem => item !== null);
-      if (!candidates.length) continue;
-      const candidate = candidates[Math.floor(Math.random() * candidates.length)];
-      await insertPoster(candidate.posterPath, candidate.title);
-      return;
-    }
-    snack("No suitable poster was found. Try again.");
-  } catch (error) {
-    ui({ type: "error", message: errorMessage(error) });
+  const firstPage = await fetchJson<TmdbListResponse<TmdbMedia>>(`/discover/${mediaType}`, params);
+  const totalPages = Math.max(1, Math.min(firstPage.total_pages || 1, 500));
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    params.page = String(Math.floor(Math.random() * totalPages) + 1);
+    const page = await fetchJson<TmdbListResponse<TmdbMedia>>(`/discover/${mediaType}`, params);
+    const candidates = (page.results || [])
+      .map((media) => toPosterItem(media, mediaType))
+      .filter((item): item is PosterItem => item !== null);
+    if (!candidates.length) continue;
+    const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+    await insertPoster(candidate.posterPath, candidate.title);
+    return;
   }
+  snack("No suitable poster was found. Try again.");
 }
 
 function detailCacheKey(mediaType: MediaType, id: number): string {
@@ -498,10 +557,11 @@ async function sendPosterAlternatives(mediaType: MediaType, id: number): Promise
     const posterPaths = await getPosterAlternatives(mediaType, id);
     ui({ type: "poster-alternatives", mediaType, id, posterPaths });
   } catch (error) {
-    // This request happens on hover, so leave the card unchanged rather than
-    // interrupting the user with an error when TMDB has no image data.
+    // Keep the card unchanged while allowing the UI to re-enable the control
+    // and offer a manual retry for a transient request failure.
     console.warn("Poster alternatives could not be loaded", error);
-    ui({ type: "poster-alternatives", mediaType, id, posterPaths: [] });
+    ui({ type: "poster-alternatives-error", mediaType, id });
+    throw error;
   }
 }
 
@@ -555,34 +615,26 @@ async function getDetails(mediaType: MediaType, id: number): Promise<DetailPaylo
 }
 
 async function sendDetails(mediaType: MediaType, id: number): Promise<void> {
-  try {
-    ui({ type: "details", detail: await getDetails(mediaType, id) });
-  } catch (error) {
-    ui({ type: "error", message: errorMessage(error) });
-  }
+  ui({ type: "details", detail: await getDetails(mediaType, id) });
 }
 
 async function getPersonCredits(personId: number, name: string): Promise<void> {
-  try {
-    const [movieCredits, tvCredits] = await Promise.all([
-      fetchJson<{ cast?: TmdbMedia[] }>(`/person/${personId}/movie_credits`, { language: "en-US" }),
-      fetchJson<{ cast?: TmdbMedia[] }>(`/person/${personId}/tv_credits`, { language: "en-US" })
-    ]);
-    const seen = new Set<string>();
-    const items = [...(movieCredits.cast || []).map((item) => ({ item, mediaType: "movie" as const })), ...
-      (tvCredits.cast || []).map((item) => ({ item, mediaType: "tv" as const }))]
-      .sort((a, b) => (b.item.popularity || 0) - (a.item.popularity || 0))
-      .map(({ item, mediaType }) => toPosterItem(item, mediaType))
-      .filter((item): item is PosterItem => {
-        if (!item || seen.has(`${item.mediaType}:${item.id}`)) return false;
-        seen.add(`${item.mediaType}:${item.id}`);
-        return true;
-      })
-      .slice(0, 24);
-    ui({ type: "person-credits", items, name });
-  } catch (error) {
-    ui({ type: "error", message: errorMessage(error) });
-  }
+  const [movieCredits, tvCredits] = await Promise.all([
+    fetchJson<{ cast?: TmdbMedia[] }>(`/person/${personId}/movie_credits`, { language: "en-US" }),
+    fetchJson<{ cast?: TmdbMedia[] }>(`/person/${personId}/tv_credits`, { language: "en-US" })
+  ]);
+  const seen = new Set<string>();
+  const items = [...(movieCredits.cast || []).map((item) => ({ item, mediaType: "movie" as const })), ...
+    (tvCredits.cast || []).map((item) => ({ item, mediaType: "tv" as const }))]
+    .sort((a, b) => (b.item.popularity || 0) - (a.item.popularity || 0))
+    .map(({ item, mediaType }) => toPosterItem(item, mediaType))
+    .filter((item): item is PosterItem => {
+      if (!item || seen.has(`${item.mediaType}:${item.id}`)) return false;
+      seen.add(`${item.mediaType}:${item.id}`);
+      return true;
+    })
+    .slice(0, 24);
+  ui({ type: "person-credits", items, name });
 }
 
 async function createTextNode(value: string, size: number, fontStyle: "Regular" | "Semi Bold", color: RGB): Promise<TextNode> {
@@ -669,49 +721,98 @@ async function insertTemplate(mediaType: MediaType, id: number, chosenPosterPath
   ui({ type: "inserted", message: `Added an editable poster card for ${detail.title}` });
 }
 
+type RetryAction = () => Promise<void>;
+
+let actionSerial = 0;
+let retryAction: RetryAction | null = null;
+
+async function runUiAction(action: RetryAction): Promise<void> {
+  const serial = ++actionSerial;
+  retryAction = null;
+
+  try {
+    await action();
+    if (serial === actionSerial) retryAction = null;
+  } catch (error) {
+    if (serial !== actionSerial) return;
+    const retryable = isRetryableError(error);
+    retryAction = retryable ? action : null;
+    console.error("Plugin action failed", error);
+    ui({ type: "error", message: errorMessage(error), retryable });
+  }
+}
+
 figma.ui.onmessage = async (rawMessage: unknown): Promise<void> => {
   const message = rawMessage as UiMessage;
   try {
     switch (message.type) {
       case "ui-ready":
-        await initialise();
+        await runUiAction(() => initialise());
         return;
-      case "get-trending":
-        await fetchTrending(
-          normalizeMediaType(message.mediaType),
-          normalizeDiscoveryRail(message.rail)
-        );
+      case "get-trending": {
+        const mediaType = normalizeMediaType(message.mediaType);
+        const rail = normalizeDiscoveryRail(message.rail);
+        await runUiAction(() => fetchTrending(mediaType, rail));
         return;
+      }
       case "live-search":
-      case "search":
-        await performSearch(normalizeSearchMode(message.mode || message.mediaType), valueOrEmpty(message.query));
+      case "search": {
+        const mode = normalizeSearchMode(message.mode || message.mediaType);
+        const query = valueOrEmpty(message.query);
+        await runUiAction(() => performSearch(mode, query));
         return;
+      }
       case "clear-search":
         searchSerial += 1;
+        actionSerial += 1;
+        retryAction = null;
         return;
-      case "random-pick":
-        await randomPick(normalizeMediaType(message.mediaType));
+      case "random-pick": {
+        const mediaType = normalizeMediaType(message.mediaType);
+        await runUiAction(() => randomPick(mediaType));
         return;
-      case "insert-poster":
+      }
+      case "insert-poster": {
         if (!message.posterPath) throw new Error("Poster is not available.");
-        await insertPoster(message.posterPath, message.title || "poster");
+        const posterPath = message.posterPath;
+        const title = message.title || "poster";
+        await runUiAction(() => insertPoster(posterPath, title));
         return;
-      case "get-poster-alternatives":
+      }
+      case "get-poster-alternatives": {
         if (typeof message.id !== "number") return;
-        await sendPosterAlternatives(normalizeMediaType(message.mediaType), message.id);
+        const mediaType = normalizeMediaType(message.mediaType);
+        const id = message.id;
+        await runUiAction(() => sendPosterAlternatives(mediaType, id));
         return;
-      case "get-details":
+      }
+      case "get-details": {
         if (typeof message.id !== "number") throw new Error("Title details are unavailable.");
-        await sendDetails(normalizeMediaType(message.mediaType), message.id);
+        const mediaType = normalizeMediaType(message.mediaType);
+        const id = message.id;
+        await runUiAction(() => sendDetails(mediaType, id));
         return;
-      case "get-person-credits":
+      }
+      case "get-person-credits": {
         if (typeof message.personId !== "number") throw new Error("Actor details are unavailable.");
-        await getPersonCredits(message.personId, message.name || "this actor");
+        const personId = message.personId;
+        const name = message.name || "this actor";
+        await runUiAction(() => getPersonCredits(personId, name));
         return;
-      case "insert-template":
+      }
+      case "insert-template": {
         if (typeof message.id !== "number") throw new Error("Poster card details are unavailable.");
-        await insertTemplate(normalizeMediaType(message.mediaType), message.id, message.posterPath);
+        const mediaType = normalizeMediaType(message.mediaType);
+        const id = message.id;
+        const posterPath = message.posterPath;
+        await runUiAction(() => insertTemplate(mediaType, id, posterPath));
         return;
+      }
+      case "retry-last-action": {
+        const action = retryAction;
+        if (action) await runUiAction(action);
+        return;
+      }
       case "close":
         figma.closePlugin();
         return;
@@ -720,6 +821,6 @@ figma.ui.onmessage = async (rawMessage: unknown): Promise<void> => {
     }
   } catch (error) {
     console.error("Plugin action failed", error);
-    ui({ type: "error", message: errorMessage(error) });
+    ui({ type: "error", message: errorMessage(error), retryable: false });
   }
 };
